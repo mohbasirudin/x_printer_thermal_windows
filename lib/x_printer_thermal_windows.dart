@@ -4,9 +4,10 @@ import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
 class XPrinterThermalWindows {
-  XPrinterThermalWindows._();
-  List<PrinterInfo> list() {
-    final printers = <PrinterInfo>[];
+  const XPrinterThermalWindows();
+  List<UsbDevice> list() {
+    print("loading printer list");
+    final printers = <UsbDevice>[];
     const flags = PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS;
 
     try {
@@ -49,9 +50,8 @@ class XPrinterThermalWindows {
             final name = printer.pPrinterName.toDartString();
             final port = printer.pPortName.toDartString();
             final driver = printer.pDriverName.toDartString();
-
-            if (port.contains("usb")) {
-              printers.add(PrinterInfo(
+            if (port.toLowerCase().contains("usb")) {
+              printers.add(UsbDevice(
                 name: name,
                 port: port,
                 driver: driver,
@@ -63,12 +63,37 @@ class XPrinterThermalWindows {
       }
       free(needed);
       free(returned);
-    } catch (e) {}
+    } catch (e) {
+      print("Error: $e");
+    }
 
     return printers;
   }
 
-  int connect(String name) {
+  void test(String name) async {
+    // ESC/POS commands for test print
+    final List<int> testData = [
+      0x1B, 0x40, // Initialize printer
+      0x1B, 0x61, 0x01, // Center alignment
+      // Text "TEST PRINT"
+      ...('TEST PRINT\n').codeUnits,
+      0x1B, 0x64, 0x02, // Feed 2 lines
+      // Current Date Time
+      ...(DateTime.now().toString() + '\n').codeUnits,
+      0x1B, 0x64, 0x02, // Feed 2 lines
+      0x1B, 0x69, // Cut paper (if supported)
+    ];
+
+    printdata(
+      printerName: name,
+      data: testData,
+    );
+  }
+
+  int? connect(
+    String name, {
+    Function(String message)? onCallback,
+  }) {
     try {
       final phPrinter = calloc<HANDLE>();
       final result = OpenPrinter(
@@ -76,11 +101,14 @@ class XPrinterThermalWindows {
         phPrinter,
         nullptr,
       );
-      if (result == 1) {}
 
-      return result;
+      if (result == 1) {
+        return phPrinter.value;
+      }
+      return null;
     } catch (e) {
-      return 0;
+      if (onCallback != null) onCallback(e.toString());
+      return null;
     }
   }
 
@@ -92,14 +120,15 @@ class XPrinterThermalWindows {
     }
   }
 
-  void print({
+  void printdata({
     required String printerName,
     required List<int> data,
     Function(bool success)? onCallback,
   }) {
     try {
       var result = connect(printerName);
-      if (result == 0) {
+      print("Printer handle: $result");
+      if (result == null) {
         _callback(onCallback)?.call(false);
         return;
       }
@@ -119,7 +148,8 @@ class XPrinterThermalWindows {
           return;
         }
         // Start page
-        if (StartPagePrinter(result) == 0) {
+        final startPage = StartPagePrinter(result);
+        if (startPage == 0) {
           EndDocPrinter(result);
           return;
         }
@@ -143,6 +173,7 @@ class XPrinterThermalWindows {
         EndPagePrinter(result);
         EndDocPrinter(result);
 
+        print("writeSuccess: $writeSuccess");
         if (writeSuccess == 1) {
           _callback(onCallback)?.call(true);
         } else {
@@ -164,12 +195,12 @@ class XPrinterThermalWindows {
   }
 }
 
-class PrinterInfo {
+class UsbDevice {
   final String name;
   final String port;
   final String driver;
 
-  PrinterInfo({
+  UsbDevice({
     required this.name,
     required this.port,
     required this.driver,
