@@ -1,5 +1,5 @@
 name: x_printer_thermal_windows
-description: "A new Flutter plugin project."
+description: "A Simple package for printing thermal receipts on windows using USB."
 version: 0.0.1
 homepage:
 

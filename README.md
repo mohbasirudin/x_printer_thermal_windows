@@ -1,15 +1,10 @@
-# x_printer_thermal_windows
+# X Printer Thermal Windows
 
-A new Flutter plugin project.
+A package for printing thermal receipts on windows using USB.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/to/develop-plugins),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
+if your thermal printer is not detected 
+or you need a driver for your printer, 
+you can download it through this 
+[link](https://github.com/mohbasirudin/driver_printer_thermal).
